@@ -1,0 +1,102 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("huhu hub", "DarkTheme")
+local Tab = Window:NewTab("Main")
+local Section = Tab:NewSection("Aimbot & Visual")
+
+-- ปุ่มที่ 1: Aimbot
+local aimbotEnabled = false
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local targetPartName = "Head"
+
+local function getClosestPlayerToMouse()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(targetPartName) then
+            local part = player.Character[targetPartName]
+            local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local mousePos = UserInputService:GetMouseLocation()
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closestPlayer = part
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- ติดตามศัตรูใกล้สุดเมื่อเปิด Aimbot
+local aimbotLoop
+Section:NewToggle("Aimbot", "เล็งอัตโนมัติใส่หัวศัตรู", function(state)
+    aimbotEnabled = state
+    if aimbotEnabled then
+        aimbotLoop = RunService.RenderStepped:Connect(function()
+            local target = getClosestPlayerToMouse()
+            if target then
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+            end
+        end)
+    else
+        if aimbotLoop then
+            aimbotLoop:Disconnect()
+        end
+    end
+end)
+
+-- ปุ่มที่ 2: เรืองแสงไอเท็ม
+local highlightEnabled = false
+Section:NewToggle("เรืองแสงของในฉาก", "ทำให้ของในฉากมีกรอบเรืองแสง", function(state)
+    highlightEnabled = state
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Tool") or obj:IsA("MeshPart") or obj:IsA("Part") then
+            if obj:FindFirstChild("Glow") then
+                obj:FindFirstChild("Glow"):Destroy()
+            end
+            if state then
+                local highlight = Instance.new("Highlight")
+                highlight.Name = "Glow"
+                highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                highlight.OutlineTransparency = 0
+                highlight.FillTransparency = 0.5
+                highlight.Adornee = obj
+                highlight.Parent = obj
+            end
+        end
+    end
+end)
+
+-- ปุ่มที่ 3: ปรับแสงตลอดวัน
+local lighting = game:GetService("Lighting")
+local oldSettings = {
+    Brightness = lighting.Brightness,
+    ClockTime = lighting.ClockTime,
+    FogEnd = lighting.FogEnd
+}
+
+local fullbright = false
+local fullbrightLoop
+
+Section:NewToggle("กลางวันตลอด", "ป้องกันเวลากลางคืน", function(state)
+    fullbright = state
+    if state then
+        lighting.Brightness = 2
+        lighting.ClockTime = 12
+        lighting.FogEnd = 100000
+
+        fullbrightLoop = game:GetService("RunService").RenderStepped:Connect(function()
+            lighting.ClockTime = 12
+        end)
+    else
+        lighting.Brightness = oldSettings.Brightness
+        lighting.ClockTime = oldSettings.ClockTime
+        lighting.FogEnd = oldSettings.FogEnd
+        if fullbrightLoop then fullbrightLoop:Disconnect() end
+    end
+end)
